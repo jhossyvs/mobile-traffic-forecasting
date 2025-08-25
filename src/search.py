@@ -10,88 +10,88 @@ from src.training import train_mlp_walk_forward
 
 
 def grid_search_mlp_parallel(series, test_size, param_grid,
-                             carpeta_modelos="results/models",
-                             nombre_csv="results/metrics/resultados_gridsearch.csv",
+                             models_folder="results/models",
+                             csv_path="results/metrics/gridsearch_results.csv",
                              n_jobs=4):
     """
-    Ejecuta una búsqueda en grid de hiperparámetros para MLP en paralelo.
-    Guarda métricas y modelos entrenados.
+    Execute a parallel grid search for MLP hyperparameters.
+    Saves metrics and trained models.
 
     Parameters
     ----------
     series : np.ndarray
-        Serie multivariada (time_steps, features).
+        Multivariate time series (time_steps, features).
     test_size : int
-        Cantidad de muestras para test (walk-forward).
+        Number of samples reserved for testing (walk-forward validation).
     param_grid : dict
-        Diccionario de hiperparámetros.
-    carpeta_modelos : str
-        Carpeta donde guardar modelos.
-    nombre_csv : str
-        Ruta del CSV con resultados.
+        Dictionary of hyperparameters to explore.
+    models_folder : str
+        Folder to save trained models.
+    csv_path : str
+        Path to save the CSV with results.
     n_jobs : int
-        Número de procesos en paralelo.
+        Number of parallel processes.
 
     Returns
     -------
-    mejor_config : dict
-        Configuración del mejor modelo.
-    mejor_score : float
-        RMSE global del mejor modelo.
+    best_config : dict
+        Configuration of the best model.
+    best_score : float
+        Global RMSE of the best model.
     """
 
-    os.makedirs(carpeta_modelos, exist_ok=True)
-    os.makedirs(os.path.dirname(nombre_csv), exist_ok=True)
+    os.makedirs(models_folder, exist_ok=True)
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
 
     grid = list(ParameterGrid(param_grid))
 
-    def entrenar_y_guardar(i, config):
+    def train_and_save(i, config):
         try:
             start = time.time()
-            score, scores, modelo = train_mlp_walk_forward(series, test_size, config)
+            score, scores, model = train_mlp_walk_forward(series, test_size, config)
 
-            nombre_modelo = f"{carpeta_modelos}/modelo_{i}_RMSE_{score:.4f}.keras"
-            save_model(modelo, nombre_modelo)
+            model_name = f"{models_folder}/model_{i}_RMSE_{score:.4f}.keras"
+            save_model(model, model_name)
 
-            resultado = config.copy()
-            resultado["modelo"] = nombre_modelo
-            resultado["RMSE_global"] = score
+            result = config.copy()
+            result["model"] = model_name
+            result["RMSE_global"] = score
             for j, s in enumerate(scores):
-                resultado[f"RMSE_t+{j+1}"] = s
+                result[f"RMSE_t+{j+1}"] = s
 
             elapsed = time.time() - start
-            print(f"✅ Proceso {i+1}/{len(grid)} - Config: {config} => RMSE: {score:.4f} | Tiempo: {elapsed:.2f}s")
+            print(f"✅ Process {i+1}/{len(grid)} - Config: {config} => RMSE: {score:.4f} | Time: {elapsed:.2f}s")
 
-            return resultado, score, modelo
+            return result, score, model
         except Exception as e:
-            print(f"❌ Error en config {config}: {e}")
+            print(f"❌ Error in config {config}: {e}")
             return None
 
-    resultados_completos = Parallel(n_jobs=n_jobs)(
-        delayed(entrenar_y_guardar)(i, cfg) for i, cfg in enumerate(grid)
+    full_results = Parallel(n_jobs=n_jobs)(
+        delayed(train_and_save)(i, cfg) for i, cfg in enumerate(grid)
     )
 
-    # Filtrar válidos
-    resultados_completos = [r for r in resultados_completos if r is not None]
-    if not resultados_completos:
-        print("⚠️ No se logró entrenar ningún modelo exitosamente.")
+    # Filter valid results
+    full_results = [r for r in full_results if r is not None]
+    if not full_results:
+        print("⚠️ No model was successfully trained.")
         return None, None
 
-    resultados, scores, modelos = zip(*resultados_completos)
+    results, scores, models = zip(*full_results)
 
-    # Guardar CSV
-    df_resultados = pd.DataFrame(resultados)
-    df_resultados.to_csv(nombre_csv, index=False)
+    # Save CSV
+    df_results = pd.DataFrame(results)
+    df_results.to_csv(csv_path, index=False)
 
-    # Seleccionar mejor
-    idx_mejor = np.argmin(scores)
-    mejor_config = resultados[idx_mejor]
-    mejor_score = scores[idx_mejor]
-    mejor_modelo = modelos[idx_mejor]
+    # Select best model
+    best_idx = np.argmin(scores)
+    best_config = results[best_idx]
+    best_score = scores[best_idx]
+    best_model = models[best_idx]
 
-    save_model(mejor_modelo, f"{carpeta_modelos}/mejor_modelo.keras")
-    print("\n🟢 Mejor configuración encontrada:")
-    print(mejor_config)
-    print(f"✅ Modelo guardado como: {carpeta_modelos}/mejor_modelo.keras")
+    save_model(best_model, f"{models_folder}/best_model.keras")
+    print("\n🟢 Best configuration found:")
+    print(best_config)
+    print(f"✅ Model saved as: {models_folder}/best_model.keras")
 
-    return mejor_config, mejor_score
+    return best_config, best_score
