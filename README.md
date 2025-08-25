@@ -68,6 +68,29 @@ The main metric is **RMSE** (Root Mean Squared Error) across horizons (1h, 2h, 3
 
 ---
 
+## 📈 Example Results (Univariate MLP)
+![RMSE Curve](results/figures/univariate_mlp_rmse.png)
+
+The MLP model shows increasing error across horizons, as expected (1h ahead is easier than 3h ahead).
+
+🔧 How to Run Experiments
+1. Preprocess the dataset:
+   ```bash
+   python src/preprocessing.py
+   ```
+2. Run the univariate MLP grid search (walk-forward evaluation):
+   ```bash
+   jupyter notebook notebooks/02-mlp-univariate.ipynb
+   ```
+3. Results will be stored under:
+   - `results/models/univariate/mlp/` → Trained models
+   - `results/metrics/univariate/mlp/` → CSV with evaluation metrics
+   - `results/figures/` → RMSE plots
+
+⚡ Note: Grid search is parallelized with joblib. Runtime may vary depending on CPU cores.
+
+---
+
 ## ⚙️ Installation  
 
 ```bash
