@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 def load_raw_dataset(path: str) -> pd.DataFrame:
     """
@@ -10,7 +11,12 @@ def load_raw_dataset(path: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame with datetime index and regions as columns.
     """
-    df = pd.read_csv(path, parse_dates=[0], index_col=0)
+    df = pd.read_csv(path, sep=";")
+
+    df["Datetime"] =  pd.to_datetime(df['Date'] + ' ' + df['Hour'], dayfirst=True)
+    df = df.drop(columns=["Date", "Hour"])
+    df = df.set_index("Datetime")
+
     return df
 
 def aggregate_hourly(df: pd.DataFrame) -> pd.DataFrame:
@@ -39,3 +45,12 @@ def scale_to_thousands(df: pd.DataFrame) -> pd.DataFrame:
     """
     df_scaled = df / 1000.0
     return df_scaled
+
+def clean_series(df, col="R1"):
+    """
+    Replace zeros with NaN and interpolate missing values linearly.
+    Default column: R1
+    """
+    df[col] = df[col].replace(0, np.nan)
+    df[col] = df[col].interpolate(method="linear")
+    return df
