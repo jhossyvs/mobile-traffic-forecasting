@@ -1,6 +1,9 @@
 import numpy as np
 from typing import Tuple
-from .models import fit_mlp, predict_mlp
+from .models import (
+    multivar_multistep_mlp_fit as fit_mlp,
+    multivar_multistep_mlp_predict as predict_mlp,
+)
 from .evaluation import evaluate_forecasts
 
 def train_mlp_walk_forward(
